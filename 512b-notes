@@ -1,0 +1,39 @@
+Up to 100,000,000 bytes (100MB)
+
+Now use 512b steps to match common file systems
+
+# Make all the blank files, using UNIX style sparse files
+$ time seq -w 0 512 100010000 | while read i
+> do
+> truncate -s $i ${i}b
+> done
+
+real    24m59.111s
+user    23m36.951s
+sys     4m34.682s
+$
+
+$ mkdir 0 1
+$ time seq 0 9 | while read i ; do seq 0 9 | while read j ; do mv 0${i}${j}*b ./0/$i/$j/ ; mv 1${i}${j}*b ./1/$i/$j/ ; done; done
+
+cd 1
+rmdir ?/?
+rmdir ?
+
+# Now, actually do the checksumming:
+time ls -d [01]/?/? | shuf | parallel -j 48 "cd {} ; md5sum * > md5s ; sha1sum * > sha1s"
+
+real    25m59.438s
+user    390m29.725s
+sys     257m7.208s
+
+
+# Combine all the checksums into sorted lists
+cat ?/?/?/sha1s | grep -v md5 | grep -v sha1 | sort -n > sha1s
+cat ?/?/?/md5s | grep -v md5 | grep -v sha1 | sort -n > md5s
+cat md5s | sort -n -k 2 > md5s.s
+cat sha1s | sort -n -k 2 > sha1s.s
+mv md5s 512b-md5s
+mv md5s.s 512b-md5s.s
+mv sha1s 512b-sha1s
+mv sha1s.s 512b-sha1s.s
