@@ -13,6 +13,13 @@ user    23m36.951s
 sys     4m34.682s
 $
 
+# For comparison, I did this on my Ryzen 3700x system:
+# real    3m16.670s
+# user    3m16.265s
+# sys     0m51.576s
+# I was doing this on a pcie v4x4 Inland SSD rather than tr01's SATA ssd.
+
+
 $ mkdir 0 1
 $ time seq 0 9 | while read i ; do seq 0 9 | while read j ; do mv 0${i}${j}*b ./0/$i/$j/ ; mv 1${i}${j}*b ./1/$i/$j/ ; done; done
 
@@ -26,6 +33,15 @@ time ls -d [01]/?/? | shuf | parallel -j 48 "cd {} ; md5sum * > md5s ; sha1sum *
 real    25m59.438s
 user    390m29.725s
 sys     257m7.208s
+
+# For comparison, I did this on my Ryzen 3700x (8c/16t) system:
+# real    48m42.378s
+# user    577m1.769s
+# sys     125m52.954s
+# I did runs with "-j 24" (above) and "-j 48" (real 47m53.097s) and default
+# "-j 16" (real 49m42.614s)
+# It looks like the CPU cores in the 1950X are really helpful (as expected)
+# But the I/O speed of the PCIe v4 drive is off the chart.
 
 
 # Combine all the checksums into sorted lists
