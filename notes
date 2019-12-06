@@ -1,0 +1,63 @@
+Up to 100,000,000 bytes (100MB)
+
+Start with 4k steps to match common file systems
+
+# Make all the blank files, using UNIX style sparse files
+$ time seq -w 0 4096 100010000 | while read i
+> do
+> truncate -s $i ${i}b
+> done
+
+real    0m21.199s
+user    0m15.333s
+sys     0m10.672s
+$ 
+
+# Just how big is this data set anyway?
+[markj@tr01 blank-sums]$ ll | awk '{totes = totes + $5;} END {print totes;};'
+1220946886740
+[markj@tr01 blank-sums]$ 
+# That's 1,220,946,886,740 (1.2TB) spread over 24k files. Yikes.
+
+# Let's split this data set into multiple folders for file system efficiency 
+# (no one likes too many files in one directory). Also, this is how we'll
+# split the data set to take advantage of parallelization
+$ mkdir 0 1
+$ seq 0 9 | while read i ; do seq 0 9 | while read j ; do
+mkdir -p ./{0,1}/$i/$j/ ; done; done
+# And finally move the files
+$ time seq 0 9 | while read i ; do seq 0 9 | while read j ; do
+mv 0${i}${j}*b ./0/$i/$j/ ;
+mv 1${i}${j}*b ./1/$i/$j/ ;
+done; done
+# And clean up empty directories
+cd 1
+rmdir ?/?
+rmdir ?
+
+
+# Now, actually do the checksumming:
+$ time ls -d ?/? | parallel -j 48 "cd {} ; md5sum * > md5s ; sha1sum * > sha1s"
+
+real    9m0.051s
+user    37m46.210s
+sys     10m11.996s
+[markj@tr01 files]$ 
+
+
+# Combine all the checksums into sorted lists
+time cat ?/?/sha1s | grep -v md5 | grep -v sha1 | sort -n > sha1s
+time cat ?/?/md5s | grep -v md5 | grep -v sha1 | sort -n > md5s
+cat md5s | sort -n -k 2 > md5s.s
+cat sha1s | sort -n -k 2 > sha1s.s
+
+# 
+#  ___________
+# < All Done! >
+#  -----------
+#         \   ^__^
+#          \  (oo)\_______
+#             (__)\       )\/\
+#                 ||----w |
+#                 ||     ||
+# 
